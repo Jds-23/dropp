@@ -1,3 +1,7 @@
+"use client"
+import useAirdropLists from '@/hooks/useAirdropList'
+import useLocalStorage from '@/hooks/useLocalStorage'
+import useTokenLists from '@/hooks/useTokenLists'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -10,6 +14,8 @@ import Link from 'next/link'
 // arbitrum
 
 export default function Home() {
+  const [airdropList,]=useAirdropLists()
+  const [tokenList,]=useTokenLists()
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="flex flex-col items-center justify-center">
@@ -43,6 +49,43 @@ Create Airdrop
           </div>
             </Link>
           
+        </div>
+        <div>
+          <div className="text-2xl font-bold text-center max-w-lg">
+            Airdrops Created
+</div>
+          <div className="text-2xl font-bold text-center max-w-lg">
+{
+  airdropList&&airdropList.map((item,index)=>{
+    return <div key={index}>
+        {item}
+      <Link className='underline' href={`/claim/${item}`}>
+        Claim
+      </Link>
+    </div>
+  })
+}
+            </div>
+        </div>
+        <div>
+          <div className="text-2xl font-bold text-center max-w-lg">
+            Tokens Created
+</div>
+          <div className="text-2xl font-bold text-center max-w-lg">
+{
+  tokenList&&tokenList.map((item,index)=>{
+    return <div key={index}>
+        {item}
+      <Link className='underline' href={`/token/${item}`}>
+        Mint
+      </Link>
+      <Link className='underline' href={`/airdrop?token=${item}`}>
+        Create Dropp
+      </Link>
+    </div>
+  })
+}
+            </div>
         </div>
         </div>
     </main>

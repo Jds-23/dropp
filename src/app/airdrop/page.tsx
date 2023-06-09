@@ -1,11 +1,13 @@
 "use client"
 import React, {  useState } from 'react'
 import { isAddress, parseAbi, parseUnits } from 'viem'
-import { useAccount, useBalance, useChainId, useContractWrite, usePublicClient, useToken, useWalletClient } from 'wagmi'
+import { useAccount, useBalance, useChainId, useContractWrite, usePublicClient, useToken, useTransaction, useWaitForTransaction, useWalletClient } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import useTokenAllowance, { TokenApprovalState } from '@/hooks/useTokenAllowance'
 import { AIRDROP_ADDRESS } from '@/constants/address'
 import Link from 'next/link'
+import useAirdropLists from '@/hooks/useAirdropList';
+import { useSearchParams } from 'next/navigation';
 
 enum TransactionState {
   NOT_STARTED,
@@ -14,10 +16,16 @@ enum TransactionState {
 }
 
 const Page = () => {
-const [tokenAddress, setTokenAddress] = useState('')
+  const searchParams = useSearchParams()
+  const search = searchParams.get('token')
+
+const [tokenAddress, setTokenAddress] = useState(search?search:'')
 const [totalAirdrop, setTotalAirdrop] = useState<string>('')
 const [sessionName, setSessionName] = useState<string>('')
 const [maxClaimable, setMaxClaimable] = useState<string>('')
+
+const [airdropList,setAirdropList]=useAirdropLists()
+
 
 const chainId=useChainId()
 const { address:userAddress, isConnected }=useAccount()
@@ -43,33 +51,19 @@ const {approve,allowanceValue,allowance}=useTokenAllowance(tokenData,AIRDROP_ADD
 
   const [transactionState, setTransactionState] = useState<TransactionState>(TransactionState.NOT_STARTED)
 
-// const createSession=async()=>{
-//   if(tokenData && sessionName ){
-//     console.log('creating session',allowanceValue,totalAirdropWei)
-//   const {result,request}=await client?.simulateContract({
-//     address: AIRDROP_ADDRESS[chainId],
-//         abi: parseAbi(["function createSession(string _sessionName, address _token, uint256 _totalAmount, uint256 _maxClaimAmount) external"]),
-//         functionName: 'createSession',
-//         args:  [sessionName, tokenData.address, totalAirdropWei ?? BigInt(0), maxClaimableWei ?? BigInt(0)] 
-//     })
-//     walletClient?.writeContract(request).then((hash)=>{
-//       // setTxnHash(hash)
-//       client.waitForTransactionReceipt({
-//           hash
-//       }).then((receipt)=>{
-//           // setSessionId(result.toString())
-//   console.log(receipt)
-// })
-//   })}
-// }
+const client=usePublicClient()
 const { writeAsync: createSession2 } = useContractWrite({
         address: AIRDROP_ADDRESS[chainId],
         abi: parseAbi(["function createSession(string _sessionName, address _token, uint256 _totalAmount, uint256 _maxClaimAmount) external"]),
         functionName: 'createSession',
         args: tokenData && sessionName ? [sessionName, tokenData.address, totalAirdropWei ?? BigInt(0), maxClaimableWei ?? BigInt(0)] : undefined,
         onSettled: (receipt) => {
-            console.log(receipt)
-            setTransactionState(TransactionState.DONE)
+            const hash=(receipt?.hash)
+            if(hash)
+            client.waitForTransactionReceipt({hash}).then(receipt=>{
+              console.log(receipt)
+              setAirdropList(sessionName)
+            setTransactionState(TransactionState.DONE)})
         },
         onSuccess: (result) => {
           setTransactionState(TransactionState.CREATING_SESSION)
@@ -84,14 +78,6 @@ const { writeAsync: createSession2 } = useContractWrite({
         <ConnectButton/>
         </div>
   )
-
-
-
-
-
-    
-
-    const [hash, setHash] = useState<`0x${string}` | undefined>(undefined)
 
   return (
     <>

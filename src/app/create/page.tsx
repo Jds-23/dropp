@@ -1,5 +1,6 @@
 "use client"
 import { TOKEN_FACTORY_ADDRESS } from '@/constants/address'
+import useTokenLists from '@/hooks/useTokenLists'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import Link from 'next/link'
 import React, { useState } from 'react'
@@ -13,6 +14,7 @@ const Create = () => {
 const { address:userAddress, isConnected }=useAccount()
 const client=usePublicClient()
 const { data: walletClient, isError, isLoading } = useWalletClient()
+const [tokenList,setTokenList]=useTokenLists()
 
 
     const [name,setName]=useState<string>('')
@@ -46,6 +48,7 @@ const { data: walletClient, isError, isLoading } = useWalletClient()
             hash
         }).then((receipt)=>{
             setTokenAddress(result)
+            setTokenList(result)
     console.log(receipt)
 })
         // setTokenAddress(result)

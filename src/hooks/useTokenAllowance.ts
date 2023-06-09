@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { formatUnits, parseAbi } from "viem"
-import { useChainId, useContractRead, useContractWrite, useTransaction } from "wagmi"
+import { useChainId, useContractRead, useContractWrite, usePublicClient, useTransaction } from "wagmi"
 import { FetchTokenResult } from "wagmi/dist/actions"
 
 export enum TokenApprovalState {
@@ -12,7 +12,7 @@ export enum TokenApprovalState {
 export default function useTokenAllowance(token: FetchTokenResult | undefined, spender: `0x${string}`, amount: bigint, owner: undefined | `0x${string}`) {
     const chainId = useChainId()
     const [hash, setHash] = useState<`0x${string}` | undefined>(undefined)
-    const txStatus = useTransaction({ chainId, hash })
+    const client = usePublicClient()
 
     const { data: allowance, refetch } = useContractRead({
         // contractAddress: tokenAddress,
@@ -27,8 +27,13 @@ export default function useTokenAllowance(token: FetchTokenResult | undefined, s
         abi: parseAbi(['function approve(address spender, uint256 amount) external returns (bool)']),
         functionName: 'approve',
         args: [spender, amount],
-        onSettled: () => {
-            refetch()
+        onSuccess: (result) => {
+            const txHash = result.hash
+            if (txHash) {
+                client.waitForTransactionReceipt({ hash: txHash }).then((receipt) => {
+                    refetch()
+                })
+            }
         }
     })
     // @ts-ignore
