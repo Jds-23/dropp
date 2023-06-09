@@ -14,7 +14,7 @@ export default function useTokenAllowance(token: FetchTokenResult | undefined, s
     const [hash, setHash] = useState<`0x${string}` | undefined>(undefined)
     const txStatus = useTransaction({ chainId, hash })
 
-    const { data: allowance } = useContractRead({
+    const { data: allowance, refetch } = useContractRead({
         // contractAddress: tokenAddress,
         address: token?.address,
         abi: parseAbi([
@@ -26,7 +26,10 @@ export default function useTokenAllowance(token: FetchTokenResult | undefined, s
         address: token?.address,
         abi: parseAbi(['function approve(address spender, uint256 amount) external returns (bool)']),
         functionName: 'approve',
-        args: [spender, amount]
+        args: [spender, amount],
+        onSettled: () => {
+            refetch()
+        }
     })
     // @ts-ignore
     return allowance != undefined ? {

@@ -42,6 +42,9 @@ return (
       <div className='text-4xl font-bold text-center max-w-lg'>
         Mint {tokenData?.name} 
 </div>
+      <div className='text-xl font-bold text-center max-w-lg'>
+        Address: {tokenData?.address} 
+</div>
 <div className='flex items-center justify-center'>
 
 <div className='text-4xl font-bold text-center max-w-lg'>

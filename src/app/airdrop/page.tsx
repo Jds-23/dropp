@@ -1,12 +1,17 @@
 "use client"
-import isERC20 from '@/utils/isErc20'
-import React, { useEffect, useRef, useState } from 'react'
+import React, {  useState } from 'react'
 import { isAddress, parseAbi, parseUnits } from 'viem'
-import { useAccount, useBalance, useChainId, useContractWrite, usePublicClient, useToken, useTransaction } from 'wagmi'
+import { useAccount, useBalance, useChainId, useContractWrite, usePublicClient, useToken, useWalletClient } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import useTokenAllowance, { TokenApprovalState } from '@/hooks/useTokenAllowance'
 import { AIRDROP_ADDRESS } from '@/constants/address'
-import { parse } from 'path'
+import Link from 'next/link'
+
+enum TransactionState {
+  NOT_STARTED,
+  CREATING_SESSION,
+  DONE,
+}
 
 const Page = () => {
 const [tokenAddress, setTokenAddress] = useState('')
@@ -16,6 +21,8 @@ const [maxClaimable, setMaxClaimable] = useState<string>('')
 
 const chainId=useChainId()
 const { address:userAddress, isConnected }=useAccount()
+// const [sessionId, setSessionId] = useState<string>()
+
 
 const { data:tokenData } = useToken({
   address: isAddress(tokenAddress)?`0x${tokenAddress.replace(/^0x/, '')}`:undefined,
@@ -26,7 +33,48 @@ const { data:tokenBalanceData } = useBalance({
 })
 
 const {approve,allowanceValue,allowance}=useTokenAllowance(tokenData,AIRDROP_ADDRESS[chainId],tokenBalanceData?.value??BigInt(0),userAddress)
+  // convert totalAirdrop to wei using parseUnits from viem library
+  const totalAirdropNumber = parseFloat(totalAirdrop)
+  const totalAirdropWei =tokenData&& parseUnits(`${Number.isNaN(totalAirdropNumber)?0:totalAirdropNumber}`, tokenData.decimals )
+  const moreThanBalance=tokenBalanceData&&totalAirdropWei!==undefined&&tokenBalanceData.value<totalAirdropWei
+  // convert maxClaimable to wei using parseUnits from viem library
+  const maxClaimableNumber = parseFloat(maxClaimable)
+  const maxClaimableWei =tokenData&& parseUnits(`${Number.isNaN(maxClaimableNumber)?0:maxClaimableNumber}`, tokenData.decimals )
 
+  const [transactionState, setTransactionState] = useState<TransactionState>(TransactionState.NOT_STARTED)
+
+// const createSession=async()=>{
+//   if(tokenData && sessionName ){
+//     console.log('creating session',allowanceValue,totalAirdropWei)
+//   const {result,request}=await client?.simulateContract({
+//     address: AIRDROP_ADDRESS[chainId],
+//         abi: parseAbi(["function createSession(string _sessionName, address _token, uint256 _totalAmount, uint256 _maxClaimAmount) external"]),
+//         functionName: 'createSession',
+//         args:  [sessionName, tokenData.address, totalAirdropWei ?? BigInt(0), maxClaimableWei ?? BigInt(0)] 
+//     })
+//     walletClient?.writeContract(request).then((hash)=>{
+//       // setTxnHash(hash)
+//       client.waitForTransactionReceipt({
+//           hash
+//       }).then((receipt)=>{
+//           // setSessionId(result.toString())
+//   console.log(receipt)
+// })
+//   })}
+// }
+const { writeAsync: createSession2 } = useContractWrite({
+        address: AIRDROP_ADDRESS[chainId],
+        abi: parseAbi(["function createSession(string _sessionName, address _token, uint256 _totalAmount, uint256 _maxClaimAmount) external"]),
+        functionName: 'createSession',
+        args: tokenData && sessionName ? [sessionName, tokenData.address, totalAirdropWei ?? BigInt(0), maxClaimableWei ?? BigInt(0)] : undefined,
+        onSettled: (receipt) => {
+            console.log(receipt)
+            setTransactionState(TransactionState.DONE)
+        },
+        onSuccess: (result) => {
+          setTransactionState(TransactionState.CREATING_SESSION)
+        }
+    })
 // if user is not connected to wallet, show connect button
   if(!isConnected)
   return (
@@ -37,23 +85,11 @@ const {approve,allowanceValue,allowance}=useTokenAllowance(tokenData,AIRDROP_ADD
         </div>
   )
 
-  // convert totalAirdrop to wei using parseUnits from viem library
-  const totalAirdropNumber = parseFloat(totalAirdrop)
-  const totalAirdropWei =tokenData&& parseUnits(`${Number.isNaN(totalAirdropNumber)?0:totalAirdropNumber}`, tokenData.decimals )
-  const moreThanBalance=tokenBalanceData&&totalAirdropWei!==undefined&&tokenBalanceData.value<totalAirdropWei
-  // convert maxClaimable to wei using parseUnits from viem library
-  const maxClaimableNumber = parseFloat(maxClaimable)
-  const maxClaimableWei =tokenData&& parseUnits(`${Number.isNaN(maxClaimableNumber)?0:maxClaimableNumber}`, tokenData.decimals )
 
 
 
 
-    const { writeAsync: createSession } = useContractWrite({
-        address: AIRDROP_ADDRESS[chainId],
-        abi: parseAbi(["function createSession(string _sessionName, address _token, uint256 _totalAmount, uint256 _maxClaimAmount) external returns (uint256)"]),
-        functionName: 'createSession',
-        args: tokenData && sessionName ? [sessionName, tokenData.address, totalAirdropWei ?? BigInt(0), maxClaimableWei ?? BigInt(0)] : undefined
-    })
+    
 
     const [hash, setHash] = useState<`0x${string}` | undefined>(undefined)
 
@@ -66,6 +102,7 @@ const {approve,allowanceValue,allowance}=useTokenAllowance(tokenData,AIRDROP_ADD
               </div>
               <input value={tokenAddress} onChange={e=>{
                 setTokenAddress(e.target.value)
+                setTransactionState(TransactionState.NOT_STARTED)
                 }} className={`${tokenData?"border-green-500":"border-red-500"} border-2 border-solid outline-none mt-4 w-full p-2 rounded-lg text-black`} placeholder='Enter Token Address' />
 {
   tokenData&&<div><div className='text-2xl font-bold text-center max-w-lg'>
@@ -83,7 +120,9 @@ const {approve,allowanceValue,allowance}=useTokenAllowance(tokenData,AIRDROP_ADD
   <div className='text-2xl font-bold text-center max-w-lg'>
     <input
       value={sessionName}
-      onChange={e => setSessionName(e.target.value)}
+      onChange={e => {setSessionName(e.target.value)
+        setTransactionState(TransactionState.NOT_STARTED)
+      }}
       className='border-2 border-solid outline-none mt-4 w-full p-2 rounded-lg text-black'
       placeholder='Enter Session Name'
     />
@@ -91,12 +130,16 @@ const {approve,allowanceValue,allowance}=useTokenAllowance(tokenData,AIRDROP_ADD
       // regex to only allow decimal numbers
       if (e.target.value.match(/^\d*\.?\d*$/)) {
                 setTotalAirdrop(e.target.value)
+                                setTransactionState(TransactionState.NOT_STARTED)
+
       }
                 }} className='border-2 border-solid outline-none mt-4 w-full p-2 rounded-lg text-black' placeholder='Enter Total Airdrop Amount' />
                 <input value={maxClaimable} onChange={e=>{
                         // regex to only allow decimal numbers
       if (e.target.value.match(/^\d*\.?\d*$/)) {
                 setMaxClaimable(e.target.value)
+                                setTransactionState(TransactionState.NOT_STARTED)
+
       }
                 }} className='border-2 border-solid outline-none mt-4 w-full p-2 rounded-lg text-black' placeholder='Enter Max Claimable Amount' />
   </div>
@@ -108,14 +151,30 @@ const {approve,allowanceValue,allowance}=useTokenAllowance(tokenData,AIRDROP_ADD
   </button>
   {
     allowance===TokenApprovalState.APPROVED&&<button onClick={async()=>{
-       createSession().then((res) => {
+       createSession2().then((res) => {
         console.log(res)
-        setHash(res.hash)
+        // setHash(res.hash)
       })
       }
       } className={`${moreThanBalance?"hidden":""} text-2xl font-bold text-center max-w-lg bg-green-500 text-white rounded-lg p-2 mt-4`}>
-      Create Session
+        {
+          transactionState===TransactionState.CREATING_SESSION&&<div className='flex items-center justify-center'>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          </div>
+        }
+        {
+          transactionState===TransactionState.NOT_STARTED&&"Create Session"
+        }
+        {
+          transactionState===TransactionState.DONE&&"Session Created"
+        }
     </button>
+  }
+  {
+   transactionState===TransactionState.DONE&& <div className='text-2xl font-bold text-center max-w-lg'>
+    Claim Link: <Link href={`claim/${sessionName}`}  className='text-blue-500'>Link</Link>
+
+  </div>
   }
 
   </>}

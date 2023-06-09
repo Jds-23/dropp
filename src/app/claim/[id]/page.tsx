@@ -1,28 +1,38 @@
 "use client"
 import { AIRDROP_ADDRESS } from '@/constants/address'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { c } from '@wagmi/cli/dist/config-c09a23a5'
 import React, { use, useState } from 'react'
 import { formatUnits, parseAbi } from 'viem'
 import { useAccount, useChainId, useContractRead, useContractWrite, useToken } from 'wagmi'
 
-const Claim = () => {
+enum TransactionState {
+  NOT_STARTED,
+  CLAIMING,
+  DONE,
+}
+
+
+const Claim = ({params}:{params:{id:string}}) => {
+  const sessionName=params.id
 const chainId=useChainId()
 const { address:userAddress, isConnected }=useAccount()
-const [sessionId, setSessionId] = useState<string>('')
+const [transactionState, setTransactionState] = useState<TransactionState>(TransactionState.NOT_STARTED)
 
-const {data:session}=useContractRead({
+
+const {data:session,refetch:sessionRefetch}=useContractRead({
     address: AIRDROP_ADDRESS[chainId],
-    abi: parseAbi(["function sessions(uint256 _sessionId) external view returns (string, uint256, uint256, uint256, address)"]),
+    abi: parseAbi(["function sessions(string calldata _sessionName) external view returns (string, uint256, uint256, uint256, address)"]),
     functionName: 'sessions',
-    args: sessionId!=="" ? [BigInt(sessionId)] : undefined
+    args: sessionName!=="" ? [sessionName] : undefined
 })
-const {data:claimedByUser}=useContractRead({
+const {data:claimedByUser,refetch:claimedByUserRefetch}=useContractRead({
     address: AIRDROP_ADDRESS[chainId],
-    abi: parseAbi(["function claimed(uint256 _sessionId, address _user) external view returns (uint256)"]),
+    abi: parseAbi(["function claimed(string calldata _sessionName, address _user) external view returns (uint256)"]),
     functionName: 'claimed',
-    args:userAddress &&sessionId!=="" ? [BigInt(sessionId),userAddress] : undefined
+    args:userAddress &&sessionName!=="" ? [sessionName,userAddress] : undefined
 })
-const sessionName=session&&session[0]
+// const sessionName=session&&session[0]
 const totalAmount=session&&session[1]
 const maxClaimAmount=session&&session[2]
 const claimedAirdrop=session&&session[3]
@@ -42,9 +52,19 @@ const { data:tokenData } = useToken({
   })
 const {writeAsync:claim}=useContractWrite({
     address: AIRDROP_ADDRESS[chainId],
-    abi: parseAbi(["function claimTokens(uint256 _sessionId,uint256 _claimAmount) external"]),
+    abi: parseAbi(["function claimTokens(string calldata _sessionName,uint256 _claimAmount) external"]),
     functionName: 'claimTokens',
-    args: toClaim&&sessionId!=="" ? [BigInt(sessionId),toClaim] : undefined
+    args: toClaim&&sessionName!=="" ? [sessionName,toClaim] : undefined,
+    onSuccess: () => {
+      console.log('success')
+      setTransactionState(TransactionState.CLAIMING)
+    },
+    onSettled: () => {  
+      console.log('settled')
+      setTransactionState(TransactionState.DONE)
+      sessionRefetch()
+      claimedByUserRefetch()
+    },
 })
 // if user is not connected to wallet, show connect button
   if(!isConnected)
@@ -62,30 +82,30 @@ const {writeAsync:claim}=useContractWrite({
             <div className='text-4xl font-bold text-center max-w-lg'>
               Claim Airdrop
               </div>
+              
                 </div>
                 <div className='text-2xl font-bold text-center max-w-lg'>
-    <input
-      value={sessionId}
-      onChange={e => {
-        // regex to only allow positive integers
-        const regex = /^[0-9\b]+$/
-        if (e.target.value === '' || regex.test(e.target.value)) {
-        setSessionId(e.target.value)}
-      }}
-      className='border-2 border-solid outline-none mt-4 w-full p-2 rounded-lg text-black'
-      placeholder='Enter Session Name'
-    />
     {sessionName&&<div className='text-2xl font-bold text-center max-w-lg'>
         <div>
 
         {sessionName}
         </div>
+        {tokenData&&totalAmount!==undefined&&<div>
+          Airdrop Balance: {formatUnits(totalAmount,tokenData.decimals)} {tokenData.symbol}
+          </div>}
         <>
         {toClaim&&tokenData&&<button
         className='text-2xl font-bold text-center max-w-lg bg-green-500 text-white rounded-lg p-2 mt-4'
         onClick={() => claim()}
         >
-            Claim {formatUnits(toClaim,tokenData.decimals)} {tokenData.symbol} 
+                      {
+            transactionState === TransactionState.CLAIMING
+              ? 'Claiming...'
+              : transactionState === TransactionState.DONE
+                ? 'Claimed!'
+                : `Claim ${formatUnits(toClaim,tokenData.decimals)} ${tokenData.symbol}`
+                      }
+
         </button>}
         </>
     </div>}
