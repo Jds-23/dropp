@@ -14,11 +14,10 @@ const [totalAirdrop, setTotalAirdrop] = useState<string>('')
 const [sessionName, setSessionName] = useState<string>('')
 const [maxClaimable, setMaxClaimable] = useState<string>('')
 
-const client=usePublicClient()
 const chainId=useChainId()
 const { address:userAddress, isConnected }=useAccount()
 
-const { data:tokenData, isError, isLoading } = useToken({
+const { data:tokenData } = useToken({
   address: isAddress(tokenAddress)?`0x${tokenAddress.replace(/^0x/, '')}`:undefined,
 })
 const { data:tokenBalanceData } = useBalance({
@@ -47,17 +46,16 @@ const {approve,allowanceValue,allowance}=useTokenAllowance(tokenData,AIRDROP_ADD
   const maxClaimableWei =tokenData&& parseUnits(`${Number.isNaN(maxClaimableNumber)?0:maxClaimableNumber}`, tokenData.decimals )
 
 
+
+
     const { writeAsync: createSession } = useContractWrite({
         address: AIRDROP_ADDRESS[chainId],
-        abi: parseAbi(["function createSession(string _sessionName, address _token, uint256 _totalAmount, uint256 _maxClaimAmount) external returns ()"]),
+        abi: parseAbi(["function createSession(string _sessionName, address _token, uint256 _totalAmount, uint256 _maxClaimAmount) external returns (uint256)"]),
         functionName: 'createSession',
         args: tokenData && sessionName ? [sessionName, tokenData.address, totalAirdropWei ?? BigInt(0), maxClaimableWei ?? BigInt(0)] : undefined
     })
 
     const [hash, setHash] = useState<`0x${string}` | undefined>(undefined)
-    const txStatus = useTransaction({ chainId, hash })
-    console.log(txStatus)
-
 
   return (
     <>
@@ -111,6 +109,7 @@ const {approve,allowanceValue,allowance}=useTokenAllowance(tokenData,AIRDROP_ADD
   {
     allowance===TokenApprovalState.APPROVED&&<button onClick={async()=>{
        createSession().then((res) => {
+        console.log(res)
         setHash(res.hash)
       })
       }

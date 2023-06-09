@@ -1,3 +1,6 @@
 export const AIRDROP_ADDRESS: { [chainId in number]: `0x${string}` } = {
-    53_4353: '0x5e3F49d3010FAc405Ce7f3fD0bd1Ea7e4cfa28E6'
+    53_4353: '0xe029CFf114631854325C02d84a56060F2aacD729',
+}
+export const TOKEN_FACTORY_ADDRESS: { [chainId in number]: `0x${string}` } = {
+    53_4353: '0x9f73e26869e15571B925eaA2fFaE6De88B7100eA',
 }
