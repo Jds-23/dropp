@@ -50,7 +50,7 @@ export const scroll_alpha_testnet = {
 
 
 const { chains, publicClient } = configureChains(
-    [mainnet, polygon, optimism, arbitrum,scroll_alpha_testnet],
+    [ polygon, scroll_alpha_testnet],
     [
       alchemyProvider({ apiKey: "aDKJq_J0-enA7NOA3ln8Ra7eujzxWx70" }),
       publicProvider()
