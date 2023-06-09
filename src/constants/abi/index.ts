@@ -1,5 +1,4 @@
 import { parseAbi } from "viem";
-import DeFiVaultJSON from "./DeFiVault.json";
 
 const abi = [
     {
