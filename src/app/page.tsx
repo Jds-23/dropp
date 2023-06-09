@@ -1,5 +1,13 @@
 import Image from 'next/image'
 
+// to do
+// create token -> show info & cta to add to metamaskk & link to block explorer & link to mit page
+// add to local storage
+// airdrop -> dynamic link
+// local storage 
+// polygon
+// arbitrum
+
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">

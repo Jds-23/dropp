@@ -1,6 +1,7 @@
 "use client"
 import { TOKEN_FACTORY_ADDRESS } from '@/constants/address'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import Link from 'next/link'
 import React, { useState } from 'react'
 import { createWalletClient, custom, encodeFunctionData, parseAbi } from 'viem'
 import { usePrepareContractWrite, useToken, useWaitForTransaction } from 'wagmi'
@@ -52,18 +53,6 @@ const { data: walletClient, isError, isLoading } = useWalletClient()
 
 }
 
-const {config,data}=usePrepareContractWrite({
-    address: TOKEN_FACTORY_ADDRESS[chainId],
-    abi: parseAbi(["function createClone(string name,bytes data) external returns (address)"]),
-    functionName: 'createClone',
-    args:  ["MintableToken",encodeFunctionData({
-        abi: parseAbi(["function initialize(string name,string symbol) external"]),
-        functionName: 'initialize',
-        args: [name,symbol]
-      })]
-})
-
-    const {write}=useContractWrite(config)
 // if user is not connected to wallet, show connect button
 if(!isConnected)
 return (
@@ -119,6 +108,12 @@ return (
                                 <div className='text-2xl font-bold text-center max-w-lg'>
                                     {tokenAddress}
                                 </div>
+
+                                <Link href={`/token/${tokenAddress}`}>
+                                    <button className='text-2xl font-bold text-center max-w-lg'>
+                                        View Token
+                                    </button>
+                                </Link>
 
                                 </div>
                         </div>
