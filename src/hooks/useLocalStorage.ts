@@ -19,7 +19,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T) => voi
     const [storedValue, setStoredValue] = useState<T>(readValue);
 
     const setValue = (value: T) => {
-        debugger
+
         setStoredValue(value);
         window.localStorage.setItem(key, JSON.stringify(value));
     };

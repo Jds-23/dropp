@@ -7,6 +7,19 @@ module.exports = {
   ],
   theme: {
     extend: {
+      colors: {
+        yehlow: {
+          100: "#fffcdd",
+          200: "#fffaba",
+          300: "#fff798",
+          400: "#fff575",
+          500: "#fff253",
+          600: "#ccc242",
+          700: "#999132",
+          800: "#666121",
+          900: "#333011"
+        },
+      },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic':
